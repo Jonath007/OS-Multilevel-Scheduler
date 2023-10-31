@@ -1,0 +1,113 @@
+#include<stdio.h>
+#include<stdlib.h>
+
+#define MAX 1000
+
+int queue1[MAX], queue2[MAX];
+int front1 = -1, rear1 = -1, front2 = -1, rear2 = -1;
+
+void enqueue1(int process) {
+    if (front1 == -1) {
+        front1 = rear1 = 0;
+        queue1[rear1] = process;
+    } else {
+        rear1++;
+        queue1[rear1] = process;
+    }
+}
+
+void enqueue2(int process) {
+    if (front2 == -1) {
+        front2 = rear2 = 0;
+        queue2[rear2] = process;
+    } else {
+        rear2++;
+        queue2[rear2] = process;
+    }
+}
+
+int dequeue1() {
+    int process = queue1[front1];
+    if (front1 == rear1) {
+        front1 = rear1 = -1;
+    } else {
+        front1++;
+    }
+    return process;
+}
+
+int dequeue2() {
+    int process = queue2[front2];
+    if (front2 == rear2) {
+        front2 = rear2 = -1;
+    } else {
+        front2++;
+    }
+    return process;
+}
+
+int main() {
+    int n, time_quantum, arrival_time[MAX], burst_time[MAX], remaining_time[MAX], priority[MAX], i, j, current_time = 0, process_running = -1, time_slice = 2;
+    printf("Enter the number of processes: ");
+    scanf("%d", &n);
+    printf("Enter the time quantum: ");
+    scanf("%d", &time_quantum);
+    printf("Enter the process details:\n");
+    for (i = 0; i < n; i++) {
+        printf("Process %d:\n", i + 1);
+        printf("Arrival Time: ");
+        scanf("%d", &arrival_time[i]);
+        printf("Burst Time: ");
+        scanf("%d", &burst_time[i]);
+        printf("Priority: ");
+        scanf("%d", &priority[i]);
+        remaining_time[i] = burst_time[i];
+        if (priority[i] == 0) {
+            enqueue1(i);
+        } else {
+            enqueue2(i);
+        }
+    }
+    printf("\n");
+    while (front1 != -1 || front2 != -1) {
+        if (front1 != -1) {
+            process_running = dequeue1();
+            printf("Process %d running in Queue 1 at time %d\n", process_running + 1, current_time);
+            for (i = 0; i < time_slice && remaining_time[process_running] > 0; i++) {
+                current_time++;
+                remaining_time[process_running]--;
+                for (j = 0; j < n; j++) {
+                    if (arrival_time[j] <= current_time && priority[j] == 0 && j != process_running) {
+                        enqueue1(j);
+                    } else if (arrival_time[j] <= current_time && priority[j] > priority[process_running] && j != process_running) {
+                        enqueue2(j);
+                    }
+                }
+            }
+            if (remaining_time[process_running] > 0) {
+                enqueue2(process_running);
+            }
+        } else {
+            process_running = dequeue2();
+            printf("Process %d running in Queue 2 at time %d\n", process_running + 1, current_time);
+            for (i = 0; i < time_quantum && remaining_time[process_running] > 0; i++) {
+                current_time++;
+                remaining_time[process_running]--;
+                for (j = 0; j < n; j++) {
+                    if (arrival_time[j] <= current_time && priority[j] == 0 && j != process_running) {
+                        enqueue1(j);
+                    } else if (arrival_time[j] <= current_time && priority[j] > priority[process_running] && j != process_running) {
+                        enqueue2(j);
+                    }
+                }
+            }
+            if (remaining_time[process_running] > 0) {
+                enqueue2(process_running);
+            }
+        }
+        if (front1 == -1 && front2 != -1) {
+            current_time += time_slice;
+        }
+    }
+    return 0;
+}
