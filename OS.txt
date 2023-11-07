@@ -1,113 +1,109 @@
-#include<stdio.h>
-#include<stdlib.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <limits.h>
 
-#define MAX 1000
+struct Process {
+    int id;         
+    int arrival;    
+    int burst;      
+    int priority;   
+};
 
-int queue1[MAX], queue2[MAX];
-int front1 = -1, rear1 = -1, front2 = -1, rear2 = -1;
+void queue1(struct Process *processes, int n) {
+    
+   
 
-void enqueue1(int process) {
-    if (front1 == -1) {
-        front1 = rear1 = 0;
-        queue1[rear1] = process;
-    } else {
-        rear1++;
-        queue1[rear1] = process;
+    int time = 0;  
+
+    for (int i = 0; i < n; i++) {
+        int min_arrival_time = INT_MAX;
+        int min_arrival_index = -1;
+
+        for (int j = i; j < n; j++) {
+            if (processes[j].arrival <= time && processes[j].priority < min_arrival_time) {
+                min_arrival_time = processes[j].priority;
+                min_arrival_index = j;
+            }
+        }
+
+        if (min_arrival_index == -1) {
+            continue;
+        }
+
+        
+        int execute_time = (processes[min_arrival_index].burst < 2) ? processes[min_arrival_index].burst : 2;
+        processes[min_arrival_index].burst -= execute_time;
+
+        
+        printf("Process %d (Priority %d) is executing for %d sec in Queue 1\n",
+               processes[min_arrival_index].id, processes[min_arrival_index].priority, execute_time);
+
+        time += execute_time;
+
+        
+        if (processes[min_arrival_index].burst > 0) {
+            processes[min_arrival_index].priority++;  
+            printf("Process %d preempted and moved to Queue 2\n", processes[min_arrival_index].id);
+        }
     }
 }
 
-void enqueue2(int process) {
-    if (front2 == -1) {
-        front2 = rear2 = 0;
-        queue2[rear2] = process;
-    } else {
-        rear2++;
-        queue2[rear2] = process;
-    }
-}
+void queue2(struct Process *processes, int n) {
+    
 
-int dequeue1() {
-    int process = queue1[front1];
-    if (front1 == rear1) {
-        front1 = rear1 = -1;
-    } else {
-        front1++;
-    }
-    return process;
-}
+    int time_quantum = 4;  
+    int remaining_burst[n];  
 
-int dequeue2() {
-    int process = queue2[front2];
-    if (front2 == rear2) {
-        front2 = rear2 = -1;
-    } else {
-        front2++;
+    for (int i = 0; i < n; i++) {
+        remaining_burst[i] = processes[i].burst;
     }
-    return process;
+
+    int time = 0;
+    int flag = 0;
+
+    while (1) {
+        flag = 0;
+        for (int i = 0; i < n; i++) {
+            if (remaining_burst[i] > 0) {
+                flag = 1;  
+
+                if (remaining_burst[i] <= time_quantum) {
+                    
+                    time += remaining_burst[i];
+                    printf("Process %d is executing for %d sec in Queue 2\n", processes[i].id, remaining_burst[i]);
+                    remaining_burst[i] = 0;
+                } else {
+                    
+                    time += time_quantum;
+                    remaining_burst[i] -= time_quantum;
+                    printf("Process %d is executing for %d sec in Queue 2\n", processes[i].id, time_quantum);
+                }
+            }
+        }
+
+        if (flag == 0) {
+            break;  
+        }
+    }
 }
 
 int main() {
-    int n, time_quantum, arrival_time[MAX], burst_time[MAX], remaining_time[MAX], priority[MAX], i, j, current_time = 0, process_running = -1, time_slice = 2;
+    int n;
     printf("Enter the number of processes: ");
     scanf("%d", &n);
-    printf("Enter the time quantum: ");
-    scanf("%d", &time_quantum);
-    printf("Enter the process details:\n");
-    for (i = 0; i < n; i++) {
-        printf("Process %d:\n", i + 1);
-        printf("Arrival Time: ");
-        scanf("%d", &arrival_time[i]);
-        printf("Burst Time: ");
-        scanf("%d", &burst_time[i]);
-        printf("Priority: ");
-        scanf("%d", &priority[i]);
-        remaining_time[i] = burst_time[i];
-        if (priority[i] == 0) {
-            enqueue1(i);
-        } else {
-            enqueue2(i);
-        }
-    }
-    printf("\n");
-    while (front1 != -1 || front2 != -1) {
-        if (front1 != -1) {
-            process_running = dequeue1();
-            printf("Process %d running in Queue 1 at time %d\n", process_running + 1, current_time);
-            for (i = 0; i < time_slice && remaining_time[process_running] > 0; i++) {
-                current_time++;
-                remaining_time[process_running]--;
-                for (j = 0; j < n; j++) {
-                    if (arrival_time[j] <= current_time && priority[j] == 0 && j != process_running) {
-                        enqueue1(j);
-                    } else if (arrival_time[j] <= current_time && priority[j] > priority[process_running] && j != process_running) {
-                        enqueue2(j);
-                    }
-                }
-            }
-            if (remaining_time[process_running] > 0) {
-                enqueue2(process_running);
-            }
-        } else {
-            process_running = dequeue2();
-            printf("Process %d running in Queue 2 at time %d\n", process_running + 1, current_time);
-            for (i = 0; i < time_quantum && remaining_time[process_running] > 0; i++) {
-                current_time++;
-                remaining_time[process_running]--;
-                for (j = 0; j < n; j++) {
-                    if (arrival_time[j] <= current_time && priority[j] == 0 && j != process_running) {
-                        enqueue1(j);
-                    } else if (arrival_time[j] <= current_time && priority[j] > priority[process_running] && j != process_running) {
-                        enqueue2(j);
-                    }
-                }
-            }
-            if (remaining_time[process_running] > 0) {
-                enqueue2(process_running);
-            }
-        }
-        if (front1 == -1 && front2 != -1) {
-            current_time += time_slice;
-        }
-    }
+
+    struct Process processes[n];
+
+   
+    for (int i = 0; i < n; i++) {
+    processes[i].id = i + 1;
+    printf("Enter arrival time, burst time, and priority for Process %d : ", i + 1);
+    scanf("%d %d %d", &processes[i].arrival, &processes[i].burst, &processes[i].priority);
+}
+
+
+    queue1(processes, n);  
+    queue2(processes, n);  
+
     return 0;
 }
